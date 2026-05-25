@@ -385,7 +385,8 @@
     <script>
         // tofix: color feedback for enum
         // to do: history trail
-        const quizData = JSON.parse(sessionStorage.getItem('activeQuiz')) || fallback;
+        const rawQuiz = sessionStorage.getItem('activeQuiz');
+        const quizData = rawQuiz ? JSON.parse(rawQuiz) : fallback;
         const fallback = {
             "id": "f1e211f6-009a-48a6-8c3e-eea7045a4597",
             "topic": "General Science & Logic",
@@ -656,8 +657,10 @@
         function finishQuiz(){
             const results = calculateScore();
             const resultData = {
+               resultId: crypto.randomUUID(),
                score: results.points,
                total: results.maxPoints,
+               topic: quizData.topic || 'Untitled Quiz',
                questions: quizData.questions.map(q=> {
                     const state = userState.answers[q.id];
                     return {
@@ -669,25 +672,10 @@
                     };
                 }),
             };
+            sessionStorage.removeItem('quizResultSaved');
             sessionStorage.setItem('quizResult', JSON.stringify(resultData));
             window.location.href = './result.html';
-            // saveQuizAttempt(quizData, user_answers_for_db, results);
         }
-
-        async function saveQuizAttempt(activeQuiz, userResults, results){
-            const attemptData = {
-                quiz_id: activeQuiz.id,
-                score: results.points,
-                max_points: results.maxPoints,
-                total_questions: results.total,
-                user_answers: userResults,
-                created_at: new Date().toISOString()
-            };
-
-            const { error } = await supabase.from('quiz_attempts').insert([attemptData]);
-            if(error) console.error('Error saving quiz attempt:', error); 
-        } 
-
         renderQuestion(0);
     </script>
 </body>

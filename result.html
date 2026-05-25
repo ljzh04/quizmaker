@@ -198,30 +198,61 @@
         </div>
     </div>
 
-    <script>
-        const rawData = sessionStorage.getItem('quizResult');
-        if(!rawData) {
-            // window.location.href = 'index.html';
-        }
-        const data = JSON.parse(rawData);
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+        import { CONFIG } from './config.js';
+        const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
-        function recordResult(result) {
-            // Get existing history or create empty array if first time
+
+        const rawData = sessionStorage.getItem('quizResult');
+        const data = rawData ? JSON.parse(rawData) : { score: 0, total: 0, topic: 'Untitled', questions: [] };
+
+        function getClientId() {
+            let id = localStorage.getItem('quizClientId');
+            if (!id) {
+                id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : ('id-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+                localStorage.setItem('quizClientId', id);
+            }
+            return id;
+        }
+
+        async function recordResult(result) {
+            // Get existing history
             const history = JSON.parse(localStorage.getItem('quizHistory')) || [];
-        
-            // Add a timestamp so you know WHEN you took the quiz
+            // Add a timestamp
             const recordEntry = {
                 ...result,
-                    timestamp: new Date().toLocaleString()
-        };
-
-        // Add to the list and save back to local storage
-        history.push(recordEntry);
-        localStorage.setItem('quizHistory', JSON.stringify(history));
+                topic: result.topic || 'Untitled Quiz',
+                timestamp: new Date().toLocaleString()
+            };
+            // Add to the list and save back to local storage
+            history.push(recordEntry);
+            localStorage.setItem('quizHistory', JSON.stringify(history));
+            // Supabase insert
+            try {
+                const client_id = getClientId();
+                await supabase.from('quiz_history').insert({
+                    client_id: client_id,
+                    score: result.score,
+                    total: result.total,
+                    timestamp: new Date().toISOString(),
+                    quiz_name: result.topic,
+                    raw: JSON.stringify(result)
+                });
+            } catch (e) {
+                console.warn('Supabase insert failed (non-blocking):', e);
+            }
         }
 
-        // Run the record function only once when the page loads
-        recordResult(data);
+        // prevents duplicate saves on reload
+        if (!sessionStorage.getItem('quizResultSaved')) {
+            recordResult(data).then(() => {
+                sessionStorage.setItem('quizResultSaved', 'true');
+            }).catch(() => {
+                // If save failed, retries on reload
+                console.warn('Record save did not complete, will retry on reload');
+            });
+        }
 
         const header = document.querySelector('.container h2');
         header.textContent = `You scored ${data.score}/${data.total}`;
@@ -243,8 +274,6 @@
             listContainer.appendChild(resultItem);
         });
 
-        
-
         function try_again(){
             window.location.href = './quiz.html';
         }
@@ -263,8 +292,12 @@
             } else {
                 alert('Sharing is not supported in this browser.');
             }
-
         }
+
+        // Expose to inline onclick handlers (module scoping issue)
+        window.try_again = try_again;
+        window.back = back;
+        window.share = share;
     </script>
 
 </body>
