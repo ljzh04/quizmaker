@@ -145,26 +145,52 @@
             transform: scale(1.03);
         }
 
-        .btn-primary {
-            width: 100%;
+        .card-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .btn-primary,
+        .btn-outline-sm {
             padding: 12px 14px;
             border-radius: 999px;
             border: 2px solid #000;
-            background: #000;
-            color: #fff;
             cursor: pointer;
             font-weight: 800;
             letter-spacing: 0.06em;
             text-transform: uppercase;
+            font-size: 0.8rem;
             transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
         }
 
-        .btn-primary:hover {
+        .btn-primary {
+            width: 100%;
+            background: #000;
+            color: #fff;
+        }
+
+        .btn-outline-sm {
+            background: #fff;
+            color: #000;
+        }
+
+        .btn-primary:hover,
+        .btn-outline-sm:hover {
             transform: translateY(-1px);
+        }
+
+        .btn-primary:hover {
             background: #222;
         }
 
-        .btn-primary:active {
+        .btn-outline-sm:hover {
+            background: #000;
+            color: #fff;
+        }
+
+        .btn-primary:active,
+        .btn-outline-sm:active {
             transform: translateY(0);
         }
 
@@ -270,6 +296,15 @@
                 }
             },
 
+            editQuiz(id){
+                const cached = JSON.parse(localStorage.getItem('cached_quizzes') || '[]');
+                const quiz = cached.find(q => q.id === id);
+                if(quiz) {
+                    sessionStorage.setItem('activeQuiz', JSON.stringify(quiz.data));
+                    window.location.href = './editor.html';
+                }
+            },
+
             renderList(data = null) {
                 const grid = document.getElementById('quiz-grid');
                 const quizzes = data || JSON.parse(localStorage.getItem('cached_quizzes') || '[]');
@@ -296,9 +331,14 @@
                                 </div>
                                 <button onclick="quizManager.deleteQuiz('${q.id}')" class="delete-btn" aria-label="Delete quiz">&times;</button>
                             </div>
-                            <button onclick="quizManager.loadQuiz('${q.id}')" class="btn-primary">
-                                Start Quiz
-                            </button>
+                            <div class="card-actions">
+                                <button onclick="quizManager.loadQuiz('${q.id}')" class="btn-primary">
+                                    Play
+                                </button>
+                                <button onclick="quizManager.editQuiz('${q.id}')" class="btn-outline-sm">
+                                    Edit
+                                </button>
+                            </div>
                         </div>
                     `;
                     grid.appendChild(card);
