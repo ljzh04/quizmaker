@@ -239,7 +239,10 @@
             <input type="text" id="itopic" name="topic" placeholder="e.g. Ancient Rome" required><br>
 
             <label for="ifile">Reference File (Optional)</label>
-            <input type="file" id="ifile" name="file"><br>
+            <input type="file" id="ifile" name="file" accept="image/*"><br>
+            <div id="image-preview" style="display:none; margin-top: 10px; margin-bottom: 14px;">
+                <img id="preview-img" src="" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid #ddd;">
+            </div>
 
             <label for="inumber">Number of Questions</label>
             <input type="number" id="inumber" name="number" min="5" max="50" value="10"><br>
@@ -301,11 +304,42 @@
             }
         };
         const submitBtn = document.querySelector('button');
+        const ifile = document.getElementById('ifile');
+        const previewContainer = document.getElementById('image-preview');
+        const previewImg = document.getElementById('preview-img');
 
-        async function runGemini(prompt, metadata) {
+        ifile.addEventListener('change', () => {
+            const file = ifile.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImg.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                previewContainer.style.display = 'none';
+            }
+        });
+
+        async function fileToGenerativePart(file) {
+            const base64EncodedDataPromise = new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(file);
+            });
+            return {
+                inlineData: {
+                    data: await base64EncodedDataPromise,
+                    mimeType: file.type
+                },
+            };
+        }
+
+        async function runGemini(promptContent, metadata) {
             const modelPrioList = [
-                "gemini-flash-lite-latest",
                 "gemini-flash-latest",
+                "gemini-flash-lite-latest",
                 "gemini-pro-latest"
             ];
 
@@ -324,7 +358,7 @@
                         },
                     });
 
-                    const result = await model.generateContent(prompt);
+                    const result = await model.generateContent(promptContent);
                     const aiOutput = JSON.parse(result.response.text());
 
                     const quizEnvelope = {
@@ -384,10 +418,17 @@
                 return;
             }
 
-            const prompt = `Generate a ${metadata.number}-question ${metadata.difficulty} quiz about ${metadata.topic}. Use only these types: ${metadata.types.join(', ')}.`;
+            const promptText = `Generate a ${metadata.number}-question ${metadata.difficulty} quiz about ${metadata.topic}. Use only these types: ${metadata.types.join(', ')}.`;
+            
+            let promptContent = [promptText];
+            const file = formData.get('file');
+            if (file && file.size > 0 && file.type.startsWith('image/')) {
+                const imagePart = await fileToGenerativePart(file);
+                promptContent.push(imagePart);
+            }
 
-            console.log("Prompting:", prompt);
-            await runGemini(prompt, metadata);
+            console.log("Prompting:", promptText);
+            await runGemini(promptContent, metadata);
         });
 
         async function getModels() {
