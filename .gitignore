@@ -6,6 +6,7 @@
 # Environment variables and auto-generated config
 .env
 .env.local
-config.js
+
 env.js
 init-config.js
+config.js
