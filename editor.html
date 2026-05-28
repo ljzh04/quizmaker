@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizMaker Editor</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0; min-height: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #fff; color: #000;
+        }
+        a, a:link, a:visited, a:hover, a:active {
+            text-decoration: none; color: inherit;
+        }
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at top, rgba(0,0,0,0.04), transparent 28%), #fff;
+        }
+        .window-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 18px 28px; border-bottom: 1px solid #000;
+            background: rgba(255,255,255,0.92); backdrop-filter: blur(10px);
+            position: sticky; top: 0; z-index: 20;
+            font-weight: 700; letter-spacing: 0.3px;
+        }
+        .window-header a { font-size: 1.05rem; }
+        .window-header span { font-size: 1.1rem; }
+        .container {
+            width: min(900px, calc(100% - 32px));
+            margin: 0 auto; padding: 30px 0 60px;
+        }
+        .editor-shell {
+            border: 1px solid #000; border-radius: 24px; background: #fff;
+            box-shadow: 0 18px 44px rgba(0,0,0,0.08); padding: 28px;
+        }
+        .editor-top {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            gap: 16px; margin-bottom: 22px; padding-bottom: 16px;
+            border-bottom: 1px solid #e5e5e5;
+        }
+        .editor-top h2 {
+            margin: 0; font-size: clamp(1.8rem, 3vw, 2.6rem); letter-spacing: -0.03em;
+        }
+        .editor-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-primary, .btn-outline, .btn-danger {
+            appearance: none; cursor: pointer; padding: 11px 18px;
+            border-radius: 999px; font-weight: 800; letter-spacing: 0.06em;
+            font-size: 0.85rem;
+            transition: transform 0.18s ease, background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+            white-space: nowrap; border: 2px solid #000;
+        }
+        .btn-primary { background: #000; color: #fff; box-shadow: 0 8px 22px rgba(0,0,0,0.10); }
+        .btn-outline { background: #fff; color: #000; }
+        .btn-danger { background: #fff; color: #000; border-color: #000; }
+        .btn-danger:hover { background: #000; color: #fff; }
+        .btn-primary:hover, .btn-outline:hover { transform: translateY(-1px); }
+        .btn-primary:active, .btn-outline:active, .btn-danger:active { transform: translateY(0); }
+        .btn-sm { padding: 7px 14px; font-size: 0.8rem; }
+        .meta-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+            margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #e5e5e5;
+        }
+        .meta-field label {
+            display: block; font-weight: 700; font-size: 0.85rem;
+            margin-bottom: 6px; letter-spacing: 0.02em;
+        }
+        .meta-field input[type="text"] {
+            width: 100%; padding: 12px 14px; border: 2px solid #000;
+            border-radius: 16px; background: #fff; color: #000; outline: none;
+            font-size: 0.95rem; transition: box-shadow 0.18s ease;
+        }
+        .meta-field input[type="text"]:focus { box-shadow: 0 0 0 3px rgba(0,0,0,0.10); }
+        .difficulty-group { display: flex; gap: 8px; margin-top: 4px; }
+        .difficulty-group input[type="radio"] { display: none; }
+        .difficulty-group label {
+            margin: 0; text-align: center; padding: 10px 16px;
+            border: 2px solid #000; border-radius: 999px; cursor: pointer;
+            transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+            background: #fff; font-weight: 700; font-size: 0.85rem; user-select: none;
+        }
+        .difficulty-group input[type="radio"]:checked + label { background: #000; color: #fff; }
+        .difficulty-group label:hover { transform: translateY(-1px); }
+        .section-label {
+            font-size: 1rem; font-weight: 800; letter-spacing: 0.02em;
+            margin: 0 0 14px; text-transform: uppercase;
+        }
+        #question-list { display: grid; gap: 10px; margin-bottom: 16px; }
+        .question-list-item {
+            display: flex; justify-content: space-between; align-items: center;
+            gap: 12px; padding: 14px 16px; border: 1px solid #000; border-radius: 16px;
+            cursor: pointer; transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+            overflow: hidden;
+        }
+        .question-list-item:hover {
+            background: #fafafa; transform: translateY(-1px);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+        }
+        .question-list-item.active { background: #000; color: #fff; }
+        .question-list-item .qli-left {
+            display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;
+        }
+        .qli-index { font-weight: 800; font-size: 1.1rem; min-width: 2em; }
+        .qli-type {
+            font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em;
+            background: #e9e9e9; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+        }
+        .question-list-item.active .qli-type { background: #333; color: #fff; }
+        .qli-text {
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;
+        }
+        .qli-delete {
+            background: none; border: none; cursor: pointer; font-size: 1.4rem;
+            color: inherit; padding: 0 4px; line-height: 1; opacity: 0.4; transition: opacity 0.18s ease;
+        }
+        .qli-delete:hover { opacity: 1; }
+        .question-list-item.active .qli-delete { opacity: 0.7; }
+        .empty-questions {
+            text-align: center; padding: 30px 16px; border: 1px dashed #cfcfcf;
+            border-radius: 16px; background: #fafafa; color: #666;
+        }
+        .question-editor { margin-top: 18px; padding-top: 18px; border-top: 1px solid #e5e5e5; }
+        .question-editor h3 { margin: 0 0 16px; font-size: 1.2rem; letter-spacing: -0.02em; }
+        .form-row { margin-bottom: 16px; }
+        .form-row label {
+            display: block; font-weight: 700; font-size: 0.85rem;
+            margin-bottom: 6px; letter-spacing: 0.02em;
+        }
+        .form-row input[type="text"], .form-row textarea {
+            width: 100%; padding: 12px 14px; border: 2px solid #000;
+            border-radius: 16px; background: #fff; color: #000; outline: none;
+            font-size: 0.95rem; font-family: inherit; transition: box-shadow 0.18s ease; resize: vertical;
+        }
+        .form-row input[type="text"]:focus, .form-row textarea:focus { box-shadow: 0 0 0 3px rgba(0,0,0,0.10); }
+        .form-row textarea { min-height: 60px; }
+        .type-selector { display: flex; gap: 8px; flex-wrap: wrap; }
+        .type-selector input[type="radio"] { display: none; }
+        .type-selector label {
+            margin: 0; text-align: center; padding: 8px 16px;
+            border: 2px solid #000; border-radius: 999px; cursor: pointer;
+            transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+            background: #fff; font-weight: 700; font-size: 0.82rem; user-select: none;
+        }
+        .type-selector input[type="radio"]:checked + label { background: #000; color: #fff; }
+        .type-selector label:hover { transform: translateY(-1px); }
+        .choices-editor { display: grid; gap: 8px; }
+        .choice-row { display: flex; gap: 8px; align-items: center; }
+        .choice-row input[type="text"] {
+            flex: 1; padding: 10px 12px; border: 2px solid #000;
+            border-radius: 14px; background: #fff; color: #000; outline: none;
+            font-size: 0.9rem; transition: box-shadow 0.18s ease;
+        }
+        .choice-row input[type="text"]:focus { box-shadow: 0 0 0 3px rgba(0,0,0,0.10); }
+        .choice-row .remove-choice {
+            background: none; border: 2px solid #000; border-radius: 999px;
+            width: 32px; height: 32px; cursor: pointer; font-size: 1.1rem;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.18s ease, color 0.18s ease; flex-shrink: 0;
+        }
+        .choice-row .remove-choice:hover { background: #000; color: #fff; }
+        .add-choice-btn {
+            background: none; border: 2px dashed #000; border-radius: 14px;
+            padding: 10px; cursor: pointer; font-weight: 700; font-size: 0.85rem;
+            color: #555; transition: background 0.18s ease, color 0.18s ease;
+        }
+        .add-choice-btn:hover { background: #000; color: #fff; }
+        .correct-answer-hint { font-size: 0.82rem; color: #555; margin-top: 4px; }
+        .editor-bottom-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+        @media (max-width: 640px) {
+            .window-header { padding: 16px 18px; }
+            .container { width: min(100%, calc(100% - 20px)); padding-top: 18px; }
+            .editor-shell { padding: 20px 16px; border-radius: 20px; }
+            .editor-top { flex-direction: column; }
+            .editor-actions { width: 100%; }
+            .editor-actions .btn-primary, .editor-actions .btn-outline, .editor-actions .btn-danger {
+                flex: 1; text-align: center;
+            }
+            .meta-grid { grid-template-columns: 1fr; }
+            .type-selector { flex-direction: column; }
+            .type-selector label { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="window-header">
+        <a href="./landing page.html">QuizMaker</a>
+        <span>🖊 Editor</span>
+    </div>
+    <div class="container">
+        <div class="editor-shell">
+            <div class="editor-top">
+                <h2>Quiz Editor</h2>
+                <div class="editor-actions">
+                    <div style="position:relative;">
+                        <button class="btn-outline btn-sm" id="export-btn">Export ▼</button>
+                        <div id="export-menu" style="display:none; position:absolute; top:100%; right:0; background:#fff; border:2px solid #000; border-radius:12px; min-width:120px; z-index:10; margin-top:4px;">
+                            <div style="padding:4px;">
+                                <button style="width:100%; text-align:left; padding:8px 12px; border:none; background:none; cursor:pointer; border-radius:8px; font-size:0.85rem; font-weight:600;" onclick="exportJSON();">JSON</button>
+                                <button style="width:100%; text-align:left; padding:8px 12px; border:none; background:none; cursor:pointer; border-radius:8px; font-size:0.85rem; font-weight:600;" onclick="exportText();">Text</button>
+                                <button style="width:100%; text-align:left; padding:8px 12px; border:none; background:none; cursor:pointer; border-radius:8px; font-size:0.85rem; font-weight:600;" onclick="exportPDF();">PDF</button>
+                                <button style="width:100%; text-align:left; padding:8px 12px; border:none; background:none; cursor:pointer; border-radius:8px; font-size:0.85rem; font-weight:600;" onclick="exportDOCX();">DOCX</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn-primary btn-sm" id="save-btn">Save & Play</button>
+                </div>
+            </div>
+            <div class="meta-grid">
+                <div class="meta-field">
+                    <label for="ed-topic">Topic</label>
+                    <input type="text" id="ed-topic" placeholder="e.g. Ancient Rome">
+                </div>
+                <div class="meta-field">
+                    <label>Difficulty</label>
+                    <div class="difficulty-group">
+                        <input type="radio" name="ed-difficulty" id="ed-diff-easy" value="easy">
+                        <label for="ed-diff-easy">Easy</label>
+                        <input type="radio" name="ed-difficulty" id="ed-diff-medium" value="medium" checked>
+                        <label for="ed-diff-medium">Medium</label>
+                        <input type="radio" name="ed-difficulty" id="ed-diff-hard" value="hard">
+                        <label for="ed-diff-hard">Hard</label>
+                    </div>
+                </div>
+            </div>
+            <p class="section-label">Questions</p>
+            <div id="question-list"><div class="empty-questions">No questions yet. Click "Add Question" to start.</div></div>
+            <button class="btn-outline" id="add-q-btn" style="width:100%;">+ Add Question</button>
+
+            <div class="question-editor" id="question-editor" style="display:none;">
+                <h3 id="editor-heading">Edit Question</h3>
+                <div class="form-row">
+                    <label>Question Type</label>
+                    <div class="type-selector">
+                        <input type="radio" name="eq-type" id="eq-type-mcq" value="MCQ">
+                        <label for="eq-type-mcq">Multiple Choice</label>
+                        <input type="radio" name="eq-type" id="eq-type-tf" value="TRUE_FALSE">
+                        <label for="eq-type-tf">True / False</label>
+                        <input type="radio" name="eq-type" id="eq-type-short" value="SHORT_ANSWER">
+                        <label for="eq-type-short">Identification</label>
+                        <input type="radio" name="eq-type" id="eq-type-enum" value="ENUMERATION">
+                        <label for="eq-type-enum">Enumeration</label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label for="eq-text">Question Text</label>
+                    <textarea id="eq-text" placeholder="Enter the question..."></textarea>
+                </div>
+                <div class="form-row" id="eq-choices-section" style="display:none;">
+                    <label>Choices</label>
+                    <div class="choices-editor" id="eq-choices-container"></div>
+                    <button class="add-choice-btn" id="add-choice-btn" style="margin-top:8px; width:100%;">+ Add Choice</button>
+                </div>
+                <div class="form-row" id="eq-count-section" style="display:none;">
+                    <label for="eq-expected-count">Number of blanks / Expected items</label>
+                    <input type="text" id="eq-expected-count" placeholder="e.g. 3">
+                </div>
+                <div class="form-row" id="eq-answer-section">
+                    <label for="eq-answer">Correct Answer(s)</label>
+                    <input type="text" id="eq-answer" placeholder="Comma-separated (e.g. Mars, Red Planet)">
+                    <div class="correct-answer-hint" id="eq-answer-hint">Separate multiple correct variations with commas.</div>
+                </div>
+                <div class="editor-bottom-actions">
+                    <button class="btn-primary" id="apply-btn" style="flex:1;">Apply Changes</button>
+                    <button class="btn-danger btn-sm" id="cancel-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+        import { CONFIG } from './config-loader.js';
+        const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+        let quiz = {
+            id: crypto.randomUUID(),
+            topic: '',
+            difficulty: 'medium',
+            createdAt: new Date().toISOString(),
+            questions: []
+        };
+        let editingIndex = -1;
+        let editingBuffer = null;
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], {type: mimeType});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function exportJSON() {
+            collectMetadata();
+            flushBuffer();
+            if (quiz.questions.length === 0) { alert('Add at least one question to export.'); return; }
+            await commitToSupabase();
+            downloadFile(JSON.stringify(quiz, null, 2), (quiz.topic||'quiz')+'.json', 'application/json');
+        }
+
+        async function exportText() {
+            collectMetadata();
+            flushBuffer();
+            if (quiz.questions.length === 0) { alert('Add at least one question to export.'); return; }
+            await commitToSupabase();
+            let text = `${quiz.topic}\nDifficulty: ${quiz.difficulty}\n${'='.repeat(50)}\n\n`;
+            quiz.questions.forEach((q, i) => {
+                text += `Q${i+1}: ${q.text}\nType: ${q.type}\n`;
+                if (q.choices && q.choices.length > 0) {
+                    text += `Choices:\n${q.choices.map((c,j)=>`  ${String.fromCharCode(65+j)}) ${c}`).join('\n')}\n`;
+                }
+                text += `Answer: ${(q.correctAnswer||[]).join(', ')}\n${'─'.repeat(50)}\n\n`;
+            });
+            downloadFile(text, (quiz.topic||'quiz')+'.txt', 'text/plain');
+        }
+
+        async function exportPDF() {
+            collectMetadata();
+            flushBuffer();
+            if (quiz.questions.length === 0) { alert('Add at least one question to export.'); return; }
+            if (!window.jsPDF) {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                script.onload = () => generatePDF();
+                document.head.appendChild(script);
+            } else generatePDF();
+        }
+
+        async function generatePDF() {
+            const {jsPDF} = window.jspdf;
+            const doc = new jsPDF();
+            let y = 20;
+            doc.setFontSize(16);
+            doc.text(quiz.topic, 20, y);
+            y += 10;
+            doc.setFontSize(10);
+            doc.text(`Difficulty: ${quiz.difficulty}`, 20, y);
+            y += 8;
+            doc.line(20, y, 190, y);
+            y += 6;
+            quiz.questions.forEach((q, i) => {
+                if (y > 270) { doc.addPage(); y = 20; }
+                doc.setFontSize(11);
+                doc.text(`Q${i+1}: ${q.text}`, 20, y, {maxWidth: 170});
+                y += doc.getTextDimensions(q.text, {maxWidth: 170}).h + 4;
+                doc.setFontSize(9);
+                if (q.choices && q.choices.length > 0) {
+                    doc.text('Choices:', 20, y);
+                    y += 4;
+                    q.choices.forEach((c, j) => {
+                        doc.text(`  ${String.fromCharCode(65+j)}) ${c}`, 20, y);
+                        y += 4;
+                    });
+                }
+                doc.text(`Answer: ${(q.correctAnswer||[]).join(', ')}`, 20, y);
+                y += 6;
+            });
+            await commitToSupabase();
+            doc.save((quiz.topic||'quiz')+'.pdf');
+        }
+
+        async function exportDOCX() {
+            collectMetadata();
+            flushBuffer();
+            if (quiz.questions.length === 0) { alert('Add at least one question to export.'); return; }
+            await commitToSupabase();
+            
+            // Load JSZip for creating DOCX (ZIP archive)
+            if (!window.JSZip) {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js';
+                script.onload = () => generateDOCX();
+                document.head.appendChild(script);
+                return;
+            }
+            generateDOCX();
+        }
+
+        async function generateDOCX() {
+            const JSZip = window.JSZip;
+            const zip = new JSZip();
+            
+            // Build document content
+            let content = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>`;
+            content += `<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>${escapeXml(quiz.topic)}</w:t></w:r></w:p>`;
+            content += `<w:p><w:r><w:t>Difficulty: ${quiz.difficulty}</w:t></w:r></w:p><w:p><w:r><w:t></w:t></w:r></w:p>`;
+            
+            quiz.questions.forEach((q, i) => {
+                content += `<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>Q${i+1}: ${escapeXml(q.text)}</w:t></w:r></w:p>`;
+                content += `<w:p><w:r><w:t>Type: ${q.type}</w:t></w:r></w:p>`;
+                if (q.choices && q.choices.length > 0) {
+                    content += `<w:p><w:r><w:t>Choices:</w:t></w:r></w:p>`;
+                    q.choices.forEach((c, j) => {
+                        content += `<w:p><w:r><w:t>${String.fromCharCode(65+j)}) ${escapeXml(c)}</w:t></w:r></w:p>`;
+                    });
+                }
+                content += `<w:p><w:r><w:t>Answer: ${escapeXml((q.correctAnswer||[]).join(', '))}</w:t></w:r></w:p>`;
+                content += `<w:p><w:r><w:t></w:t></w:r></w:p>`;
+            });
+            content += '</w:body></w:document>';
+            
+            // Add files to ZIP
+            zip.file('word/document.xml', content);
+            zip.file('[Content_Types].xml', `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+            zip.file('_rels/.rels', `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+            zip.file('word/_rels/document.xml.rels', `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`);
+            
+            const blob = await zip.generateAsync({type: 'blob'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (quiz.topic||'quiz')+'.docx';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function escapeXml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+        }
+
+        function renderQuestionList() {
+            const list = document.getElementById('question-list');
+            if (quiz.questions.length === 0) {
+                list.innerHTML = '<div class="empty-questions">No questions yet. Click "Add Question" to start.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            quiz.questions.forEach((q, i) => {
+                const labels = { MCQ:'MCQ', TRUE_FALSE:'T/F', SHORT_ANSWER:'ID', ENUMERATION:'ENUM' };
+                const item = document.createElement('div');
+                item.className = 'question-list-item' + (i === editingIndex ? ' active' : '');
+                item.innerHTML = '<div class="qli-left"><span class="qli-index">#'+(i+1)+'</span><span class="qli-type">'+(labels[q.type]||q.type)+'</span><span class="qli-text">'+(q.text||'Untitled').replace(/</g,'<')+'</span></div><button class="qli-delete" data-del="'+i+'" title="Delete question">&times;</button>';
+                item.querySelector('[data-del]').onclick = (e) => { e.stopPropagation(); deleteQuestion(i); };
+                item.onclick = () => editQuestion(i);
+                list.appendChild(item);
+            });
+        }
+
+        function renderChoices() {
+            const container = document.getElementById('eq-choices-container');
+            if (!editingBuffer || (editingBuffer.type !== 'MCQ' && editingBuffer.type !== 'TRUE_FALSE')) return;
+            const choices = editingBuffer.type === 'TRUE_FALSE' ? ['True','False'] : (editingBuffer.choices||['']);
+            container.innerHTML = '';
+            choices.forEach((c, i) => {
+                const row = document.createElement('div'); row.className = 'choice-row';
+                const inp = document.createElement('input'); inp.type = 'text'; inp.value = c||''; inp.placeholder = 'Choice '+(i+1);
+                row.appendChild(inp);
+                if (editingBuffer.type !== 'TRUE_FALSE' && choices.length > 1) {
+                    const btn = document.createElement('button'); btn.className = 'remove-choice'; btn.innerHTML = '&times;';
+                    btn.onclick = () => removeChoice(i); row.appendChild(btn);
+                }
+                container.appendChild(row);
+            });
+        }
+
+        function readChoicesFromDOM() {
+            if (!editingBuffer) return;
+            if (editingBuffer.type === 'MCQ' || editingBuffer.type === 'TRUE_FALSE') {
+                const inputs = document.querySelectorAll('#eq-choices-container .choice-row input');
+                editingBuffer.choices = Array.from(inputs).map(inp => inp.value.trim()).filter(v=>v!=='');
+                if (editingBuffer.type === 'TRUE_FALSE' && editingBuffer.choices.length < 2) editingBuffer.choices = ['True','False'];
+                if (editingBuffer.choices.length === 0) editingBuffer.choices = [''];
+            }
+        }
+
+        function cloneQuestion(q) { return JSON.parse(JSON.stringify(q)); }
+
+        function addQuestion() {
+            quiz.questions.push({ id:crypto.randomUUID(), type:'MCQ', text:'', choices:['','','',''], correctAnswer:[''], expectedCount:1 });
+            editingIndex = quiz.questions.length - 1;
+            renderQuestionList(); openEditor(editingIndex);
+        }
+
+        function editQuestion(i) {
+            if (i >= 0 && i < quiz.questions.length) { editingIndex = i; renderQuestionList(); openEditor(i); }
+        }
+
+        function deleteQuestion(i) {
+            if (!confirm('Delete question #'+(i+1)+'?')) return;
+            quiz.questions.splice(i,1);
+            if (editingIndex === i) { editingIndex = -1; hideEditor(); }
+            else if (editingIndex > i) editingIndex--;
+            renderQuestionList();
+        }
+
+        function openEditor(i) {
+            const q = quiz.questions[i]; if (!q) return;
+            editingBuffer = cloneQuestion(q);
+            document.getElementById('question-editor').style.display = 'block';
+            document.getElementById('editor-heading').textContent = 'Question #'+(i+1);
+            const r = document.querySelector('input[name="eq-type"][value="'+q.type+'"]');
+            if (r) r.checked = true;
+            document.getElementById('eq-text').value = q.text;
+            document.getElementById('eq-expected-count').value = q.expectedCount;
+            document.getElementById('eq-answer').value = (q.correctAnswer||[]).join(', ');
+            updateEditorVisibility(q.type); renderChoices();
+        }
+
+        function hideEditor() {
+            document.getElementById('question-editor').style.display = 'none';
+            editingIndex = -1; editingBuffer = null; renderQuestionList();
+        }
+
+        function updateEditorVisibility(type) {
+            const cs = document.getElementById('eq-choices-section');
+            const ct = document.getElementById('eq-count-section');
+            const as = document.getElementById('eq-answer-section');
+            const ah = document.getElementById('eq-answer-hint');
+            if (type === 'MCQ' || type === 'TRUE_FALSE') {
+                cs.style.display = 'block'; ct.style.display = 'none'; as.style.display = 'block';
+                ah.textContent = 'Comma-separated correct answer(s). For MCQ, list the correct choice text exactly as written.';
+            } else if (type === 'ENUMERATION') {
+                cs.style.display = 'none'; ct.style.display = 'block'; as.style.display = 'block';
+                ah.textContent = 'Comma-separated list of all correct items in order.';
+            } else {
+                cs.style.display = 'none'; ct.style.display = 'none'; as.style.display = 'block';
+                ah.textContent = 'Separate multiple correct variations with commas.';
+            }
+        }
+
+        document.querySelectorAll('input[name="eq-type"]').forEach(r => {
+            r.addEventListener('change', () => {
+                const type = document.querySelector('input[name="eq-type"]:checked').value;
+                if (!editingBuffer) { updateEditorVisibility(type); return; }
+                readChoicesFromDOM();
+                if (type === 'TRUE_FALSE') editingBuffer.choices = ['True','False'];
+                else if (type === 'MCQ') editingBuffer.choices = ['','','',''];
+                else editingBuffer.choices = [];
+                renderChoices(); updateEditorVisibility(type);
+            });
+        });
+
+        function addChoice() {
+            if (!editingBuffer) return;
+            readChoicesFromDOM();
+            if (!editingBuffer.choices) editingBuffer.choices = [];
+            editingBuffer.choices.push(''); renderChoices();
+        }
+
+        function removeChoice(i) {
+            if (!editingBuffer) return;
+            readChoicesFromDOM();
+            if (!editingBuffer.choices || editingBuffer.choices.length <= 1) return;
+            editingBuffer.choices.splice(i,1); renderChoices();
+        }
+
+        function applyQuestionEdit() {
+            if (!editingBuffer || editingIndex < 0) return;
+            const te = document.querySelector('input[name="eq-type"]:checked');
+            if (!te) return;
+            editingBuffer.type = te.value;
+            editingBuffer.text = document.getElementById('eq-text').value.trim();
+            readChoicesFromDOM();
+            if (editingBuffer.type === 'ENUMERATION') {
+                const cv = parseInt(document.getElementById('eq-expected-count').value, 10);
+                editingBuffer.expectedCount = isNaN(cv)||cv<1 ? 1 : cv;
+            } else editingBuffer.expectedCount = 1;
+            const ar = document.getElementById('eq-answer').value.trim();
+            editingBuffer.correctAnswer = ar ? ar.split(',').map(s=>s.trim()).filter(s=>s!=='') : [''];
+            if (!editingBuffer.text) { alert('Please enter a question text.'); return; }
+            if ((editingBuffer.type==='MCQ'||editingBuffer.type==='TRUE_FALSE') && editingBuffer.choices.length<2) { alert('Please add at least 2 choices.'); return; }
+            if (!editingBuffer.correctAnswer.length || (editingBuffer.correctAnswer.length===1 && editingBuffer.correctAnswer[0]==='')) { alert('Please specify at least one correct answer.'); return; }
+            quiz.questions[editingIndex] = cloneQuestion(editingBuffer);
+            renderQuestionList(); openEditor(editingIndex);
+        }
+
+        function discardEdit() {
+            if (editingIndex >= 0) openEditor(editingIndex);
+            else hideEditor();
+        }
+
+        async function commitToSupabase() {
+            const { error } = await supabase
+                .from('quizzes')
+                .upsert({
+                    id: quiz.id,
+                    topic: quiz.topic,
+                    difficulty: quiz.difficulty,
+                    data: quiz,
+                    created_at: quiz.createdAt
+                }, { onConflict: 'id' });
+            if (error) console.error('Supabase upsert error:', error);
+        }
+
+        function collectMetadata() {
+            quiz.topic = document.getElementById('ed-topic').value.trim() || 'Untitled Quiz';
+            const de = document.querySelector('input[name="ed-difficulty"]:checked');
+            quiz.difficulty = de ? de.value : 'medium';
+            quiz.createdAt = new Date().toISOString();
+        }
+
+        function flushBuffer() {
+            if (editingIndex < 0) return;
+            const te = document.querySelector('input[name="eq-type"]:checked');
+            if (!te) return;
+            editingBuffer.type = te.value;
+            editingBuffer.text = document.getElementById('eq-text').value.trim();
+            readChoicesFromDOM();
+            const ar = document.getElementById('eq-answer').value.trim();
+            editingBuffer.correctAnswer = ar ? ar.split(',').map(s=>s.trim()).filter(s=>s!=='') : [''];
+            quiz.questions[editingIndex] = cloneQuestion(editingBuffer);
+        }
+
+        async function saveQuiz() {
+            collectMetadata();
+            flushBuffer();
+            editingIndex = -1; editingBuffer = null; hideEditor();
+            if (quiz.questions.length === 0) { alert('Add at least one question before saving.'); return; }
+            for (let i = 0; i < quiz.questions.length; i++) {
+                const q = quiz.questions[i];
+                if (!q.text) { alert('Question #'+(i+1)+' has no text.'); editQuestion(i); return; }
+                if ((q.type==='MCQ'||q.type==='TRUE_FALSE') && (!q.choices||q.choices.length<2)) { alert('Question #'+(i+1)+' needs at least 2 choices.'); editQuestion(i); return; }
+                if (!q.correctAnswer||q.correctAnswer.length===0||(q.correctAnswer.length===1&&q.correctAnswer[0]==='')) { alert('Question #'+(i+1)+' needs at least one correct answer.'); editQuestion(i); return; }
+            }
+            await commitToSupabase();
+            sessionStorage.setItem('activeQuiz', JSON.stringify(quiz));
+            window.location.href = './quiz.html';
+        }
+
+        // Wire buttons
+        document.getElementById('save-btn').onclick = saveQuiz;
+        document.getElementById('export-btn').onclick = () => {
+            const menu = document.getElementById('export-menu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        };
+        document.getElementById('add-q-btn').onclick = addQuestion;
+        document.getElementById('add-choice-btn').onclick = addChoice;
+        document.getElementById('apply-btn').onclick = applyQuestionEdit;
+        document.getElementById('cancel-btn').onclick = discardEdit;
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('export-menu');
+            const btn = document.getElementById('export-btn');
+            if (!menu.contains(e.target) && e.target !== btn) menu.style.display = 'none';
+        });
+
+        // Init
+        (function init() {
+            const raw = sessionStorage.getItem('activeQuiz');
+            if (raw) {
+                try {
+                    const p = JSON.parse(raw);
+                    if (p && p.questions) {
+                        quiz = p;
+                        document.getElementById('ed-topic').value = quiz.topic||'';
+                        const dr = document.querySelector('input[name="ed-difficulty"][value="'+quiz.difficulty+'"]');
+                        if (dr) dr.checked = true;
+                    }
+                } catch(e) {}
+            }
+            renderQuestionList();
+        })();
+
+        // Expose export functions to global scope for onclick handlers
+        window.exportJSON = exportJSON;
+        window.exportText = exportText;
+        window.exportPDF = exportPDF;
+        window.exportDOCX = exportDOCX;
+    </script>
+</body>
+</html>

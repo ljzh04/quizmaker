@@ -1,0 +1,197 @@
+﻿<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizMaker</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #fff;
+            color: #000;
+        }
+
+        a, a:link, a:visited, a:hover, a:active {
+            text-decoration: none;
+            color: inherit;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            background: transparent;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .window-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 28px;
+            border-bottom: 1px solid #000;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            background: #fff;
+            position: sticky;
+            top: 0;
+        }
+
+        .window-header a {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.05rem;
+        }
+
+        .window-header span {
+            font-size: 1.1rem;
+        }
+
+        .container {
+            width: min(900px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 90px 20px 60px;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        h1 {
+            font-size: clamp(2.2rem, 5vw, 4.2rem);
+            line-height: 1.05;
+            margin: 0;
+            max-width: 12ch;
+            margin-left: auto;
+            margin-right: auto;
+            letter-spacing: -0.03em;
+        }
+
+        p {
+            color: #444;
+            max-width: 640px;
+            margin: 24px auto 0;
+            font-size: 1.05rem;
+            line-height: 1.7;
+        }
+
+        .actions {
+            margin-top: 34px;
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary,
+        .btn-outline {
+            appearance: none;
+            -webkit-appearance: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 14px 22px;
+            min-width: 170px;
+            border-radius: 999px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            font-size: 0.9rem;
+            border: 2px solid #000;
+            transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        .btn-primary {
+            background: #000;
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .btn-outline {
+            background: #fff;
+            color: #000;
+        }
+
+        .btn-primary:hover,
+        .btn-outline:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary:hover {
+            background: #222;
+            color: #fff;
+        }
+
+        .btn-outline:hover {
+            background: #000;
+            color: #fff;
+        }
+
+        .btn-primary:active,
+        .btn-outline:active {
+            transform: translateY(0);
+        }
+
+        .btn-outline span {
+            display: inline-block;
+            margin-left: 8px;
+            font-weight: 700;
+        }
+
+        @media (max-width: 640px) {
+            .window-header {
+                padding: 16px 18px;
+            }
+
+            .container {
+                padding-top: 72px;
+            }
+
+            .actions {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn-primary,
+            .btn-outline {
+                width: 100%;
+                max-width: 320px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="window-header">
+        <a href="./landing page.html">QuizMaker</a>
+        <span>+ 👤</span>
+    </div>
+
+    <div class="container">
+        <h1>Turn any topic into a Quiz in seconds</h1>
+        <p>
+            Quizmaker is an AI-powered quiz generator that creates quizzes from any topic in seconds.
+            Perfect for students, teachers, and anyone who wants to learn something new.
+        </p>
+
+        <div class="actions">
+            <a href="./setup parameter.html" class="btn-primary">GET STARTED</a>
+            <a href="./editor.html" class="btn-outline">EDITOR <span></span></a>
+            <a href="./library.html" class="btn-outline">LIBRARY <span></span></a>
+            <a href="./saver.html" class="btn-outline">HISTORY</a>
+        </div>
+    </div>
+</body>
+</html>

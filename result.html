@@ -1,0 +1,304 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Results</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            min-height: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #fff;
+            color: #000;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button,
+        a {
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        button {
+            appearance: none;
+            -webkit-appearance: none;
+            user-select: none;
+        }
+
+        .container {
+            width: min(520px, calc(100% - 24px));
+            border: 1px solid #000;
+            border-radius: 22px;
+            padding: 28px 22px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            background: #fff;
+        }
+
+        h2 {
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: -0.02em;
+        }
+
+        .score {
+            margin-top: 8px;
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        .results-list {
+            margin: 24px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            text-align: left;
+        }
+
+        .result-item {
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .correct {
+            background: #d4edda;
+            border: 1px solid #28a745;
+        }
+
+        .incorrect {
+            background: #f8d7da;
+            border: 1px solid #dc3545;
+        }
+
+        .result-item span {
+            font-weight: 700;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+
+        .btn-primary,
+        .btn-outline {
+            appearance: none;
+            -webkit-appearance: none;
+            border-radius: 999px;
+            padding: 12px 18px;
+            min-width: 120px;
+            font-weight: 800;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+            user-select: none;
+            border: 2px solid #000;
+        }
+
+        .btn-primary {
+            background: #000;
+            color: #fff;
+        }
+
+        .btn-outline {
+            background: #fff;
+            color: #000;
+        }
+
+        .btn-primary:hover,
+        .btn-outline:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-outline:hover {
+            background: #000;
+            color: #fff;
+        }
+
+        .btn-primary:active,
+        .btn-outline:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:active {
+            background: #000;
+            color: #fff;
+        }
+
+        .btn-outline:active {
+            background: #000;
+            color: #fff;
+        }
+
+        .btn-primary:focus,
+        .btn-outline:focus {
+            outline: none;
+        }
+
+        @media (max-width: 500px) {
+            .container {
+                padding: 22px 16px;
+            }
+
+            .actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-primary,
+            .btn-outline {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>You scored 6/10</h2>
+        <div class="score">Review your answers below</div>
+
+        <div class="results-list">
+            <div class="result-item incorrect">
+                <div>1. Sample Question</div>
+                <span>Wrong</span>
+            </div>
+
+            <div class="result-item correct">
+                <div>2. Sample Question</div>
+                <span>Correct</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button onclick="back()" class="btn-outline">BACK TO HOME</button>
+            <button onclick="share()" class="btn-primary">SHARE</button>
+            <button onclick="try_again()" class="btn-outline">TRY AGAIN</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+        import { CONFIG } from './config-loader.js';
+        const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+
+
+        const rawData = sessionStorage.getItem('quizResult');
+        const data = rawData ? JSON.parse(rawData) : { score: 0, total: 0, topic: 'Untitled', questions: [] };
+
+        function getClientId() {
+            let id = localStorage.getItem('quizClientId');
+            if (!id) {
+                id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : ('id-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+                localStorage.setItem('quizClientId', id);
+            }
+            return id;
+        }
+
+        async function recordResult(result) {
+            // Get existing history
+            const history = JSON.parse(localStorage.getItem('quizHistory')) || [];
+            // Add a timestamp
+            const recordEntry = {
+                ...result,
+                topic: result.topic || 'Untitled Quiz',
+                timestamp: new Date().toLocaleString()
+            };
+            // Add to the list and save back to local storage
+            history.push(recordEntry);
+            localStorage.setItem('quizHistory', JSON.stringify(history));
+            // Supabase insert
+            try {
+                const client_id = getClientId();
+                await supabase.from('quiz_history').insert({
+                    client_id: client_id,
+                    score: result.score,
+                    total: result.total,
+                    timestamp: new Date().toISOString(),
+                    quiz_name: result.topic,
+                    raw: JSON.stringify(result)
+                });
+            } catch (e) {
+                console.warn('Supabase insert failed (non-blocking):', e);
+            }
+        }
+
+        // prevents duplicate saves on reload
+        if (!sessionStorage.getItem('quizResultSaved')) {
+            recordResult(data).then(() => {
+                sessionStorage.setItem('quizResultSaved', 'true');
+            }).catch(() => {
+                // If save failed, retries on reload
+                console.warn('Record save did not complete, will retry on reload');
+            });
+        }
+
+        const header = document.querySelector('.container h2');
+        header.textContent = `You scored ${data.score}/${data.total}`;
+
+        const listContainer = document.querySelector('.results-list');
+        listContainer.innerHTML = '';
+
+        data.questions.forEach((q, index) => {
+            const resultItem = document.createElement('div');
+            const statusClass = q.isCorrect ? 'correct' : 'incorrect';
+            const statusText = q.isCorrect ? 'Correct' : 'Wrong';
+
+            resultItem.className = `result-item ${statusClass}`;
+
+            resultItem.innerHTML = `
+                <div>${index+1}. ${q.text}</div>
+                <span>${statusText}</span>
+            `;
+            listContainer.appendChild(resultItem);
+        });
+
+        function try_again(){
+            window.location.href = './quiz.html';
+        }
+        function back(){
+            window.location.href = './index.html';
+        }
+        function share(){
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Quiz Results',
+                    text: `I scored ${data.score}/${data.total} on the quiz! Can you beat my score?`,
+                    url: window.location.href
+                }).then(() => {
+                    console.log('Thanks for sharing!');
+                }).catch(console.error);
+            } else {
+                alert('Sharing is not supported in this browser.');
+            }
+        }
+
+        // Expose to inline onclick handlers (module scoping issue)
+        window.try_again = try_again;
+        window.back = back;
+        window.share = share;
+    </script>
+
+</body>
+</html>

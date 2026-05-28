@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizMaker</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            min-height: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #fff;
+            color: #000;
+        }
+
+        a, a:link, a:visited, a:hover, a:active {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top, rgba(0,0,0,0.04), transparent 28%),
+                #fff;
+        }
+
+        .window-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 28px;
+            border-bottom: 1px solid #000;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .window-header a {
+            font-size: 1.05rem;
+        }
+
+        .window-header span {
+            font-size: 1.1rem;
+        }
+
+        .container {
+            width: min(760px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 34px 0 56px;
+        }
+
+        .quiz-shell,
+        #results-screen {
+            border: 1px solid #000;
+            border-radius: 24px;
+            background: #fff;
+            box-shadow: 0 18px 44px rgba(0, 0, 0, 0.08);
+            padding: 28px;
+        }
+
+        #progress-bar {
+            background: #e9e9e9 !important;
+            height: 10px !important;
+            border-radius: 999px !important;
+            margin-bottom: 26px !important;
+            overflow: hidden;
+            border: 1px solid #000;
+        }
+
+        #progress-fill {
+            background: #000 !important;
+            height: 100% !important;
+            border-radius: 999px !important;
+            transition: width 0.25s ease;
+        }
+
+        #question-text {
+            margin: 0 0 20px;
+            font-size: clamp(1.35rem, 2.4vw, 2rem);
+            line-height: 1.35;
+            letter-spacing: -0.02em;
+        }
+
+        .input-group {
+            display: none;
+            gap: 12px;
+        }
+
+        .input-group button,
+        .input-group input {
+            width: 100%;
+        }
+
+        .btn-primary,
+        .btn-outline,
+        .btn-correct,
+        .btn-incorrect {
+            appearance: none;
+            cursor: pointer;
+            min-height: 48px;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            transition: transform 0.18s ease, background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+        }
+
+        .btn-primary, .btn-correct {
+            border: 2px solid #000;
+            background: #000;
+            color: #fff;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.10);
+        }
+
+        .btn-outline {
+            border: 2px solid #000;
+            background: #fff;
+            color: #000;
+        }
+
+        .btn-primary:hover,
+        .btn-outline:hover,
+        .btn-correct:hover,
+        .btn-incorrect:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active,
+        .btn-outline:active,
+        .btn-correct:active,
+        .btn-incorrect:active {
+            transform: translateY(0);
+        }
+
+        .input-group button {
+            text-align: left !important;
+        }
+
+        .input-group input[type="text"] {
+            border: 2px solid #000;
+            border-radius: 16px;
+            padding: 14px 16px;
+            font-size: 1rem;
+            outline: none;
+            background: #fff;
+            color: #000;
+        }
+
+        .input-group input[type="text"]:focus {
+            box-shadow: 0 0 0 3px rgba(0,0,0,0.10);
+        }
+
+        .btn-correct,
+        .input-correct {
+            background: #000 !important;
+            color: #fff !important;
+            border: 2px solid #000 !important;
+            box-shadow: 0 0 0 1px #000 inset;
+        }
+
+        .btn-incorrect,
+        .input-incorrect {
+            background: #fff !important;
+            color: #000 !important;
+            border: 2px solid #000 !important;
+            opacity: 0.62;
+        }
+
+        #feedback-text {
+            margin: 16px 0 0 !important;
+            min-height: 1.2em;
+            font-weight: 700 !important;
+            letter-spacing: 0.01em;
+        }
+
+        #navigation-buttons {
+            display: flex !important;
+            gap: 12px;
+            justify-content: space-between !important;
+            align-items: center;
+            margin-top: 22px;
+        }
+
+        #navigation-buttons button {
+            flex: 1;
+        }
+
+        #navigation-buttons button:nth-child(2) {
+            flex: 1.2;
+        }
+
+        #results-screen h1 {
+            margin: 0 0 8px;
+            font-size: clamp(2rem, 4vw, 3rem);
+            letter-spacing: -0.03em;
+        }
+
+        #percentage-wrapper {
+            margin-top: 10px;
+            font-size: clamp(2.6rem, 7vw, 4.4rem);
+            font-weight: 900;
+            letter-spacing: -0.06em;
+        }
+
+        #points-wrapper {
+            margin-top: 8px;
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        #score-message {
+            margin: 18px 0 28px;
+            color: #222;
+            line-height: 1.6;
+        }
+
+        #summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 18px;
+            overflow: hidden;
+            border-radius: 16px;
+            border: 1px solid #000;
+        }
+
+        #summary-table thead th {
+            background: #000;
+            color: #fff;
+            font-size: 0.95rem;
+            letter-spacing: 0.02em;
+        }
+
+        #summary-table th,
+        #summary-table td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #d9d9d9;
+            vertical-align: top;
+        }
+
+        #summary-table tbody tr:hover {
+            background: #fafafa;
+        }
+
+        #summary-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        #results-screen .btn-primary {
+            margin-top: 28px !important;
+            width: 100%;
+        }
+
+        .enum-field {
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        .input-group {
+            display: grid;
+        }
+
+        #mcq-container,
+        #true-false-container,
+        #short-answer-container,
+        #enumeration-container {
+            gap: 12px;
+        }
+
+        #true-false-container {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        @media (max-width: 640px) {
+            .window-header {
+                padding: 16px 18px;
+            }
+
+            .container {
+                width: min(100%, calc(100% - 20px));
+                padding: 18px 0 34px;
+            }
+
+            .quiz-shell,
+            #results-screen {
+                padding: 20px 16px;
+                border-radius: 20px;
+            }
+
+            #navigation-buttons {
+                flex-direction: column;
+            }
+
+            #navigation-buttons button {
+                width: 100%;
+            }
+
+            #true-false-container {
+                grid-template-columns: 1fr;
+            }
+
+            #summary-table thead th,
+            #summary-table td {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="window-header"><a href="./landing page.html">QuizMaker </a><span>+ 👤</span></div>
+
+    <div class="container quiz-shell" style="max-width: 600px;">
+        <div id="progress-bar" style="background: #eee; height: 8px; border-radius: 4px; margin-bottom: 30px;">
+            <div id="progress-fill" style="background: black; width: 60%; height: 100%; border-radius: 4px;"></div>
+        </div>
+
+        <h3 id="question-text"></h3>
+
+        <div id="mcq-container" class="input-group" style="display: none;">
+            <button id="choiceA" class="btn-outline" style="text-align: left;">A. Sample choice</button>
+            <button id="choiceB" class="btn-primary" style="text-align: left;">B. Sample choice</button>
+            <button id="choiceC" class="btn-outline" style="text-align: left;">C. Sample choice</button>
+            <button id="choiceD" class="btn-outline" style="text-align: left;">D. Sample choice</button>
+        </div>
+
+        <div id="true-false-container" class="input-group" style="display: none;">
+            <button id="choiceTrue" class="btn-outline" style="text-align: left;">True</button>
+            <button id="choiceFalse" class="btn-outline" style="text-align: left;">False</button>
+        </div>
+
+        <div id="short-answer-container" class="input-group" style="display: none;">
+            <input type="text" placeholder="Enter your answer"><br>
+        </div>
+
+        <div id="enumeration-container" class="input-group" style="display: none;">
+            <div id="enum-inputs-wrapper"></div>
+        </div>
+
+        <div id="feedback-text" style="margin: 15px 0; font-weight: bold; min-height: 1.2em;"></div>
+
+        <div id="navigation-buttons" style="display: flex; justify-content: space-between;">
+            <button id="prev-button" onclick="handlePrev()" class="btn-outline">Previous</button>
+            <button id="submit-button" onclick="handleSubmit()" class="btn-primary" style="display: none;">Submit</button>
+            <button id="next-button" onclick="handleNext()" class="btn-primary">Next</button>
+        </div>
+    </div>
+
+    <div id="results-screen" class="container" style="max-width: 650px; display: none;">
+        <h1>Quiz Complete!</h1>
+        <div id="percentage-wrapper">
+            <span id="final-percentage">0%</span>
+        </div>
+        <div id="points-wrapper">
+            <span id="final-points">0</span> / <span id="total-points">0</span>
+        </div>
+        <p id="score-message"></p>
+
+        <h3>Review Your Answers</h3>
+        <table id="summary-table" style="width:100%; border-collapse: collapse; margin-top: 20px;">
+            <thead>
+                <tr style="border-bottom: 2px solid #eee;">
+                    <th style="text-align: left; padding: 10px;">Question</th>
+                    <th style="text-align: center; padding: 10px;">Result</th>
+                    <th style="text-align: right; padding: 10px;">Points</th>
+                    <th style="text-align: left; padding: 10px;">Correct Answer/s</th>
+                </tr>
+            </thead>
+            <tbody id="summary-container">
+            </tbody>
+        </table>
+
+        <button onclick="location.reload()" class="btn-primary" style="margin-top: 30px;">Try Again</button>
+    </div>
+
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        // tofix: color feedback for enum
+        // to do: history trail
+        const rawQuiz = sessionStorage.getItem('activeQuiz');
+        const quizData = rawQuiz ? JSON.parse(rawQuiz) : fallback;
+        const fallback = {
+            "id": "f1e211f6-009a-48a6-8c3e-eea7045a4597",
+            "topic": "General Science & Logic",
+            "difficulty": "Medium",
+            "questions": [
+                {
+                "id": "q-101",
+                "type": "MCQ",
+                "text": "Which planet is known as the Red Planet?",
+                "choices": ["Venus", "Mars", "Jupiter", "Saturn"],
+                "correctAnswer": ["Mars"],
+                "expectedCount": 1
+                },
+                {
+                "id": "q-102",
+                "type": "TRUE_FALSE",
+                "text": "Sound travels faster through a vacuum than through air.",
+                "choices": ["True", "False"],
+                "correctAnswer": ["False"],
+                "expectedCount": 1
+                },
+                {
+                "id": "q-103",
+                "type": "SHORT_ANSWER",
+                "text": "What is the common name for the 'NaCl' compound?",
+                "choices": [],
+                "correctAnswer": ["salt", "table salt", "sodium chloride"],
+                "expectedCount": 1
+                },
+                {
+                "id": "q-104",
+                "type": "ENUMERATION",
+                "text": "Name the three states of matter (excluding plasma).",
+                "choices": [],
+                "correctAnswer": ["Solid", "Liquid", "Gas"],
+                "expectedCount": 3
+                },
+                {
+                "id": "q-105",
+                "type": "MCQ",
+                "text": "Which of these is a prime number?",
+                "choices": ["4", "9", "11", "15"],
+                "correctAnswer": ["11"],
+                "expectedCount": 1
+                }
+            ],
+            "createdAt": new Date().toISOString(),
+        };
+
+        let userState = {
+            currentQuestionIndex: 0,
+            answers: {}
+        };
+
+        function renderQuestion(index){
+            const q = quizData.questions[index];
+            const state = userState.answers[q.id];
+            document.getElementById('question-text').textContent = q.text;
+            document.querySelectorAll('.input-group').forEach(el => el.style.display = 'none');
+            document.getElementById('progress-fill').style.width = ((index + 1) / quizData.questions.length * 100) + '%';
+
+            const submitBtn = document.getElementById('submit-button');
+            const nextBtn = document.getElementById('next-button');
+            if(q.type === 'MCQ'){
+                const container = document.getElementById('mcq-container');
+                const btns = container.querySelectorAll('button'); 
+                container.style.display = 'block';
+                q.choices.forEach((choice, i) => {
+                    btns[i].textContent = q.choices[i];
+                    btns[i].onclick = () => handleSelection(choice);
+                    btns[i].disabled = !!state;
+                    btns[i].className = 'btn-outline';
+                    if(state){
+                        if(q.correctAnswer.includes(choice)){
+                            btns[i].className = 'btn-correct';
+                        }
+                        else if(choice === state.user && !state.perfect){
+                            btns[i].className = 'btn-incorrect';
+                        }
+                    }
+                });
+                submitBtn.style.display = 'none';
+            }
+            else if(q.type === 'TRUE_FALSE'){
+                const container = document.getElementById('true-false-container');
+                const nextBtn = document.getElementById('next-button');
+                const btns = container.querySelectorAll('button');
+                container.style.display = 'block';
+                btns.forEach(btn => {
+                    btn.onclick = () => handleSelection(btn.textContent);
+                    btn.disabled = !!state;
+                    btn.className = 'btn-outline';
+                    if(state){
+                        if(q.correctAnswer.includes(btn.textContent)){
+                            btn.className = 'btn-correct';
+                        }
+                        else if(btn.textContent === state.user){
+                            btn.className = 'btn-incorrect';
+                        }
+                    }
+                });
+                submitBtn.style.display = 'none';
+            }
+            else if(q.type === 'SHORT_ANSWER'){
+                const container = document.getElementById('short-answer-container');
+                const input = container.querySelector('input');
+                container.style.display = 'block';
+                input.disabled = !!state;
+                input.value = state ? state.user : '';
+                if(state){
+                    input.className = state.perfect ? 'input-correct' : 'input-incorrect';
+                }
+                else{
+                    input.className = '';
+                }
+                submitBtn.style.display = state ? 'none' : 'block';
+                
+            }
+            else if(q.type === 'ENUMERATION'){
+                const container = document.getElementById('enumeration-container');
+                const wrapper = document.getElementById('enum-inputs-wrapper');
+                let availableTargets = q.correctAnswer.map(v => v.toLowerCase().trim());
+                
+                wrapper.innerHTML = '';
+                
+                for(let i=0; i < q.expectedCount; i++){
+                    const val = (state && state.user[i]) ? state.user[i].toLowerCase().trim() : '';
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = state ? state.user[i] : '';
+                    input.placeholder = `Item ${i+1}`;
+                    input.classList.add('enum-field');
+                    if(state){
+                        input.disabled = true;
+                        const targetIndex = availableTargets.indexOf(val);
+                        if(val !== '' && targetIndex !== -1){
+                            input.classList.add('input-correct');
+                            availableTargets.splice(targetIndex, 1);
+                        }
+                        else{
+                            input.classList.add('input-incorrect');
+                        }
+                    }
+                    wrapper.appendChild(input);
+                }
+                container.style.display = 'block';
+                submitBtn.style.display = state ? 'none' : 'block';
+            }
+            if(index === quizData.questions.length - 1){
+                nextBtn.textContent = 'Finish';
+            }
+            else {
+                nextBtn.textContent = 'Next';
+            }
+            showFeedback(q.id);
+        }
+
+        function handleNext(){
+            if(userState.currentQuestionIndex < quizData.questions.length - 1){
+                userState.currentQuestionIndex++;
+                renderQuestion(userState.currentQuestionIndex);
+            }
+            else if(userState.currentQuestionIndex === quizData.questions.length - 1){
+                finishQuiz();
+            }
+        }
+
+        function handlePrev(){
+            if(userState.currentQuestionIndex > 0){
+                userState.currentQuestionIndex--;
+                renderQuestion(userState.currentQuestionIndex);
+            }
+        }
+        // for mcq/tf
+        function handleSelection(choice){
+            const q = quizData.questions[userState.currentQuestionIndex];
+            processAnswer(q, choice);
+        }
+
+        // for enum/short
+        function handleSubmit(){
+            const q = quizData.questions[userState.currentQuestionIndex];
+            if (q.type === 'SHORT_ANSWER'){
+                const input = document.querySelector('#short-answer-container input');
+                processAnswer(q, input.value);
+            }
+            else if (q.type === 'ENUMERATION'){
+                const inputs = document.querySelectorAll('.enum-field');
+                const answers = Array.from(inputs).map(input => input.value);
+                processAnswer(q, answers);
+            }
+        }
+
+        function processAnswer(q, answer){
+            let points = 0;
+            let perfect = false;
+
+            if(q.type === 'SHORT_ANSWER'){
+                const valid = q.correctAnswer.map(v => v.toLowerCase().trim());
+                points = valid.includes(answer.toLowerCase().trim()) ? 1 : 0;
+                perfect = points === 1;
+            }
+            else if(q.type === 'ENUMERATION'){
+                const targets = q.correctAnswer.map(v => v.toLowerCase().trim());
+                const uniqueAnswers = [...new Set(answer.map(v => v.toLowerCase().trim()))];
+                points = uniqueAnswers.filter(v => targets.includes(v)).length;
+                perfect = points === q.expectedCount;
+            }
+            else{
+                points = q.correctAnswer.includes(answer) ? 1 : 0;
+                perfect = points === 1;
+            }
+
+            userState.answers[q.id] = { user: answer, points: points, perfect: perfect };
+            renderQuestion(userState.currentQuestionIndex);
+        }
+
+        function showFeedback(qId){
+            const feedbackEl = document.getElementById('feedback-text');
+            const state = userState.answers[qId];
+
+            if(state){
+                if(state.perfect){
+                    feedbackEl.textContent = 'Correct!';
+                    feedbackEl.style.color = 'black';
+                }
+                else if(state.points > 0){
+                    feedbackEl.textContent = `Partial Credit: ${state.points}`;
+                    feedbackEl.style.color = 'black';
+                }
+                else{
+                    feedbackEl.textContent = 'Incorrect.';
+                    feedbackEl.style.color = 'black';
+                }
+            }
+            else{
+                feedbackEl.textContent = '';
+            }
+        
+        }
+
+        function calculateScore(){
+            let earnedPoints = 0;
+            let perfectQuestions = 0;
+            let maxPossiblePoints = 0;
+            const totalQuestionsCount = quizData.questions.length;
+
+            quizData.questions.forEach(q => {
+                const state = userState.answers[q.id];
+
+                maxPossiblePoints += q.expectedCount;
+
+                if(state){
+                    perfectQuestions += state.perfect ? 1 : 0;
+                    earnedPoints += state.points;
+                }
+            })
+
+            return {
+                points: earnedPoints,
+                correct: perfectQuestions,
+                maxPoints: maxPossiblePoints,
+                total: totalQuestionsCount,
+                percentage: Math.round((earnedPoints / maxPossiblePoints) * 100)
+            };
+        }
+
+        function finishQuiz(){
+            const results = calculateScore();
+            const resultData = {
+               resultId: crypto.randomUUID(),
+               score: results.points,
+               total: results.maxPoints,
+               topic: quizData.topic || 'Untitled Quiz',
+               questions: quizData.questions.map(q=> {
+                    const state = userState.answers[q.id];
+                    return {
+                        id: q.id,
+                        text: q.text,
+                        isCorrect: state ? state.perfect : false,
+                        points: state ? state.points : 0,
+                        maxPoints: q.expectedCount
+                    };
+                }),
+            };
+            sessionStorage.removeItem('quizResultSaved');
+            sessionStorage.setItem('quizResult', JSON.stringify(resultData));
+            window.location.href = './result.html';
+        }
+        renderQuestion(0);
+    </script>
+</body>
+</html>
