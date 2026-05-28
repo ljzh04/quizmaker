@@ -1,6 +1,6 @@
 /**
  * Simplified Configuration Loader
- * Uses a generated config.js when deployed and falls back to .env for local development.
+ * Uses a generated runtime-config.js when deployed and falls back to config.js or .env for local development.
  */
 
 async function loadConfig() {
@@ -11,7 +11,7 @@ async function loadConfig() {
     };
 
     try {
-        const module = await import('./config.js');
+        const module = await import('./runtime-config.js');
         if (module.CONFIG) {
             return {
                 ...config,
@@ -19,7 +19,17 @@ async function loadConfig() {
             };
         }
     } catch (e) {
-        // Ignore missing config.js and fall back to .env
+        try {
+            const module = await import('./config.js');
+            if (module.CONFIG) {
+                return {
+                    ...config,
+                    ...module.CONFIG
+                };
+            }
+        } catch (innerError) {
+            // Ignore missing generated config files and fall back to .env
+        }
     }
 
     try {
