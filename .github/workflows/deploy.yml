@@ -31,7 +31,7 @@ jobs:
           };
 
           fs.writeFileSync(
-            'config.js',
+            'runtime-config.js',
             `export const CONFIG = ${JSON.stringify(config, null, 2)};\n`
           );
           NODE
