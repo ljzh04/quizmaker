@@ -2,3 +2,10 @@
 .gitignore
 .cocoindex_code/cocoindex.db/mdb/lock.mdb
 .cocoindex_code/cocoindex.db/mdb/data.mdb
+
+# Environment variables and auto-generated config
+.env
+.env.local
+config.js
+env.js
+init-config.js

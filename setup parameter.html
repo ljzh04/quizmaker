@@ -275,7 +275,7 @@
         // toremember: update the quiz.html to support the choice array schema which is always array
         import { GoogleGenerativeAI, SchemaType} from "https://esm.run/@google/generative-ai";
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-        import { CONFIG } from './config.js';
+        import { CONFIG } from './config-loader.js';
         const supabase = createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
         const API_KEY = CONFIG.GEMINI_KEY;
         const genAI = new GoogleGenerativeAI(API_KEY);

@@ -2,7 +2,7 @@
 
 export const CONFIG = {
     
-GEMINI_KEY: "AIzaSyAghGLcPrW_NTk3NyGE1Y3anfG-LuoKopM",
+GEMINI_KEY: "AIzaSyA_eCh8-8j6Ygz_v6P0ayqtfadorzic9dk",
     
 SUPABASE_URL: "https://pgofejmyhatsjvkscctf.supabase.co",
     
