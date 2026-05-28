@@ -82,3 +82,20 @@ When making changes to configuration:
 - **`config.js` is in `.gitignore`** - generated files shouldn't be committed
 - **`.env.example` IS committed** - serves as documentation of required keys
 - Always use environment-specific credentials (dev, staging, production)
+
+## GitHub Pages Deployment
+
+The GitHub Actions workflow automatically generates `config.js` during deployment using secrets:
+
+1. **Add GitHub Secrets** to your repository:
+   - Go to Settings → Secrets and variables → Actions
+   - Add these secrets:
+     - `GEMINI_KEY` - Your Gemini API key
+     - `SUPABASE_URL` - Your Supabase URL
+     - `SUPABASE_ANON_KEY` - Your Supabase anonymous key
+
+2. **Deploy** - Push to `main` branch and GitHub Actions will:
+   - Generate `config.js` with secrets
+   - Deploy to GitHub Pages automatically
+
+The `.github/workflows/deploy.yml` workflow handles this for you.
