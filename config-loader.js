@@ -1,26 +1,39 @@
-// Load configuration from environment variables or fallback to window globals
-// For Vite/build environments: uses import.meta.env
-// For static/direct serving: looks for window.APP_CONFIG
+/**
+ * Simplified Configuration Loader
+ * Directly fetches and parses the .env file at runtime.
+ * No build step or setup scripts required.
+ */
 
-let config = {};
-
-// Try Vite environment variables first (if using build process)
-if (import.meta?.env) {
-    config = {
-        GEMINI_KEY: import.meta.env.VITE_GEMINI_KEY || "",
-        SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL || "",
-        SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY || ""
+async function loadConfig() {
+    const config = {
+        GEMINI_KEY: "",
+        SUPABASE_URL: "",
+        SUPABASE_ANON_KEY: ""
     };
+
+    try {
+        const response = await fetch('.env');
+        if (response.ok) {
+            const text = await response.text();
+            text.split('\n').forEach(line => {
+                const [k, ...v] = line.split('=');
+                if (!k || k.trim().startsWith('#')) return;
+                
+                // Remove VITE_ prefix if present and clean up the value
+                const key = k.trim().replace(/^VITE_/, '');
+                const value = v.join('=').trim().replace(/^["']|["']$/g, '');
+                
+                if (key in config) {
+                    config[key] = value;
+                }
+            });
+        }
+    } catch (e) {
+        // Fallback to empty values if .env is missing or unreachable
+    }
+
+    return config;
 }
 
-// Fall back to window.APP_CONFIG if available (injected by server or config.js)
-if (!config.GEMINI_KEY && window.APP_CONFIG) {
-    config = window.APP_CONFIG;
-}
-
-// Fall back to empty values if nothing is configured
-export const CONFIG = {
-    GEMINI_KEY: config.GEMINI_KEY || "",
-    SUPABASE_URL: config.SUPABASE_URL || "",
-    SUPABASE_ANON_KEY: config.SUPABASE_ANON_KEY || ""
-};
+// Top-level await ensures CONFIG is fully populated before it is used by importers
+export const CONFIG = await loadConfig();
