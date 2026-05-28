@@ -192,7 +192,17 @@
             <div class="editor-top">
                 <h2>Quiz Editor</h2>
                 <div class="editor-actions">
-                    <button class="btn-outline btn-sm" id="export-btn">Export JSON</button>
+                    <div style="position:relative;">
+                        <button class="btn-outline btn-sm" id="export-btn">Export ▼</button>
+                        <div id="export-menu" style="display:none; position:absolute; top:100%; right:0; background:#fff; border:2px solid #000; border-radius:12px; min-width:120px; z-index:10; margin-top:4px;">
+                            <div style="padding:4px;">
+                                <button style="width:100%; text-align:left; padding:8px 12px; border:none; background:none; cursor:pointer; border-radius:8px; font-size:0.85rem; font-weight:600;" onclick="exportJSON();">JSON</button>
+                                <button style="width:100%; text-align:left; padding:8px 12px; border:none; background:none; cursor:pointer; border-radius:8px; font-size:0.85rem; font-weight:600;" onclick="exportText();">Text</button>
+                                <button style="width:100%; text-align:left; padding:8px 12px; border:none; background:none; cursor:pointer; border-radius:8px; font-size:0.85rem; font-weight:600;" onclick="exportPDF();">PDF</button>
+                                <button style="width:100%; text-align:left; padding:8px 12px; border:none; background:none; cursor:pointer; border-radius:8px; font-size:0.85rem; font-weight:600;" onclick="exportDOCX();">DOCX</button>
+                            </div>
+                        </div>
+                    </div>
                     <button class="btn-primary btn-sm" id="save-btn">Save & Play</button>
                 </div>
             </div>
@@ -272,6 +282,145 @@
         };
         let editingIndex = -1;
         let editingBuffer = null;
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], {type: mimeType});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function exportJSON() {
+            collectMetadata();
+            flushBuffer();
+            if (quiz.questions.length === 0) { alert('Add at least one question to export.'); return; }
+            await commitToSupabase();
+            downloadFile(JSON.stringify(quiz, null, 2), (quiz.topic||'quiz')+'.json', 'application/json');
+        }
+
+        async function exportText() {
+            collectMetadata();
+            flushBuffer();
+            if (quiz.questions.length === 0) { alert('Add at least one question to export.'); return; }
+            await commitToSupabase();
+            let text = `${quiz.topic}\nDifficulty: ${quiz.difficulty}\n${'='.repeat(50)}\n\n`;
+            quiz.questions.forEach((q, i) => {
+                text += `Q${i+1}: ${q.text}\nType: ${q.type}\n`;
+                if (q.choices && q.choices.length > 0) {
+                    text += `Choices:\n${q.choices.map((c,j)=>`  ${String.fromCharCode(65+j)}) ${c}`).join('\n')}\n`;
+                }
+                text += `Answer: ${(q.correctAnswer||[]).join(', ')}\n${'─'.repeat(50)}\n\n`;
+            });
+            downloadFile(text, (quiz.topic||'quiz')+'.txt', 'text/plain');
+        }
+
+        async function exportPDF() {
+            collectMetadata();
+            flushBuffer();
+            if (quiz.questions.length === 0) { alert('Add at least one question to export.'); return; }
+            if (!window.jsPDF) {
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                script.onload = () => generatePDF();
+                document.head.appendChild(script);
+            } else generatePDF();
+        }
+
+        async function generatePDF() {
+            const {jsPDF} = window.jspdf;
+            const doc = new jsPDF();
+            let y = 20;
+            doc.setFontSize(16);
+            doc.text(quiz.topic, 20, y);
+            y += 10;
+            doc.setFontSize(10);
+            doc.text(`Difficulty: ${quiz.difficulty}`, 20, y);
+            y += 8;
+            doc.line(20, y, 190, y);
+            y += 6;
+            quiz.questions.forEach((q, i) => {
+                if (y > 270) { doc.addPage(); y = 20; }
+                doc.setFontSize(11);
+                doc.text(`Q${i+1}: ${q.text}`, 20, y, {maxWidth: 170});
+                y += doc.getTextDimensions(q.text, {maxWidth: 170}).h + 4;
+                doc.setFontSize(9);
+                if (q.choices && q.choices.length > 0) {
+                    doc.text('Choices:', 20, y);
+                    y += 4;
+                    q.choices.forEach((c, j) => {
+                        doc.text(`  ${String.fromCharCode(65+j)}) ${c}`, 20, y);
+                        y += 4;
+                    });
+                }
+                doc.text(`Answer: ${(q.correctAnswer||[]).join(', ')}`, 20, y);
+                y += 6;
+            });
+            await commitToSupabase();
+            doc.save((quiz.topic||'quiz')+'.pdf');
+        }
+
+        async function exportDOCX() {
+            collectMetadata();
+            flushBuffer();
+            if (quiz.questions.length === 0) { alert('Add at least one question to export.'); return; }
+            await commitToSupabase();
+            
+            // Load JSZip for creating DOCX (ZIP archive)
+            if (!window.JSZip) {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/jszip@3/dist/jszip.min.js';
+                script.onload = () => generateDOCX();
+                document.head.appendChild(script);
+                return;
+            }
+            generateDOCX();
+        }
+
+        async function generateDOCX() {
+            const JSZip = window.JSZip;
+            const zip = new JSZip();
+            
+            // Build document content
+            let content = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>`;
+            content += `<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>${escapeXml(quiz.topic)}</w:t></w:r></w:p>`;
+            content += `<w:p><w:r><w:t>Difficulty: ${quiz.difficulty}</w:t></w:r></w:p><w:p><w:r><w:t></w:t></w:r></w:p>`;
+            
+            quiz.questions.forEach((q, i) => {
+                content += `<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>Q${i+1}: ${escapeXml(q.text)}</w:t></w:r></w:p>`;
+                content += `<w:p><w:r><w:t>Type: ${q.type}</w:t></w:r></w:p>`;
+                if (q.choices && q.choices.length > 0) {
+                    content += `<w:p><w:r><w:t>Choices:</w:t></w:r></w:p>`;
+                    q.choices.forEach((c, j) => {
+                        content += `<w:p><w:r><w:t>${String.fromCharCode(65+j)}) ${escapeXml(c)}</w:t></w:r></w:p>`;
+                    });
+                }
+                content += `<w:p><w:r><w:t>Answer: ${escapeXml((q.correctAnswer||[]).join(', '))}</w:t></w:r></w:p>`;
+                content += `<w:p><w:r><w:t></w:t></w:r></w:p>`;
+            });
+            content += '</w:body></w:document>';
+            
+            // Add files to ZIP
+            zip.file('word/document.xml', content);
+            zip.file('[Content_Types].xml', `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+            zip.file('_rels/.rels', `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+            zip.file('word/_rels/document.xml.rels', `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>`);
+            
+            const blob = await zip.generateAsync({type: 'blob'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = (quiz.topic||'quiz')+'.docx';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function escapeXml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+        }
 
         function renderQuestionList() {
             const list = document.getElementById('question-list');
@@ -472,25 +621,21 @@
             window.location.href = './quiz.html';
         }
 
-        async function exportQuiz() {
-            collectMetadata();
-            flushBuffer();
-            editingIndex = -1; editingBuffer = null; hideEditor();
-            if (quiz.questions.length === 0) { alert('Add at least one question to export.'); return; }
-            await commitToSupabase();
-            const blob = new Blob([JSON.stringify(quiz,null,2)], {type:'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = (quiz.topic||'quiz')+'.json';
-            a.click(); URL.revokeObjectURL(url);
-        }
-
         // Wire buttons
         document.getElementById('save-btn').onclick = saveQuiz;
-        document.getElementById('export-btn').onclick = exportQuiz;
+        document.getElementById('export-btn').onclick = () => {
+            const menu = document.getElementById('export-menu');
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        };
         document.getElementById('add-q-btn').onclick = addQuestion;
         document.getElementById('add-choice-btn').onclick = addChoice;
         document.getElementById('apply-btn').onclick = applyQuestionEdit;
         document.getElementById('cancel-btn').onclick = discardEdit;
+        document.addEventListener('click', (e) => {
+            const menu = document.getElementById('export-menu');
+            const btn = document.getElementById('export-btn');
+            if (!menu.contains(e.target) && e.target !== btn) menu.style.display = 'none';
+        });
 
         // Init
         (function init() {
@@ -508,6 +653,12 @@
             }
             renderQuestionList();
         })();
+
+        // Expose export functions to global scope for onclick handlers
+        window.exportJSON = exportJSON;
+        window.exportText = exportText;
+        window.exportPDF = exportPDF;
+        window.exportDOCX = exportDOCX;
     </script>
 </body>
 </html>
