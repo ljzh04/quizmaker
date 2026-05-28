@@ -1,7 +1,7 @@
 # Configuration Setup Guide
 
 ## Overview
-The QuizMaker application loads configuration variables directly from a `.env` file at runtime. This eliminates the need for build steps or generation scripts.
+The QuizMaker application loads configuration from a generated `config.js` file when deployed, and falls back to `.env` for local development.
 
 ## Initial Setup
 
@@ -12,7 +12,7 @@ cp .env.example .env
 ```
 
 ### 2. Add your API keys
-Edit `.env` and add your actual API keys. You can use the `VITE_` prefix (optional) for compatibility with other tools:
+Edit `.env` and add your local API keys. You can use the `VITE_` prefix (optional) for compatibility with other tools:
 ```env
 GEMINI_KEY=your_gemini_api_key_here
 SUPABASE_URL=your_supabase_url_here
@@ -20,23 +20,25 @@ SUPABASE_ANON_KEY=your_supabase_anon_key_here
 ```
 
 ## How It Works
-The `config-loader.js` script fetches the `.env` file from the server root when the page loads, parses the text, and exports a `CONFIG` object.
+The `config-loader.js` script first tries to import `config.js` from the site root. If that file is missing, it falls back to reading `.env` for local testing.
 
 - **No Node.js required** for runtime configuration.
-- **No build steps** or `setup-config.js` execution needed.
-- **Automatic parsing** handles both standard and `VITE_` prefixed keys.
+- **No build steps** are needed for the browser app.
+- **Automatic parsing** still handles both standard and `VITE_` prefixed keys in local `.env` files.
 
 ## Deployment (GitHub Pages)
 
-### 1. Ensure `.nojekyll` exists
-GitHub Pages ignores files starting with a dot (like `.env`) by default. The root of this repository contains a `.nojekyll` file to disable this behavior.
+### 1. Set repository settings
+In GitHub repository settings, add:
+- `SUPABASE_URL` as a repository variable.
+- `GEMINI_KEY` as a secret.
+- `SUPABASE_ANON_KEY` as a secret.
 
-### 2. Secrets Management
-Since this is a static site, you must ensure a `.env` file is present in your deployment branch. If you are deploying from a branch manually:
-- Include the `.env` file in the branch (be careful not to make it public if the repo is public).
+### 2. Let the workflow generate config.js
+The GitHub Actions workflow writes `config.js` from those settings and deploys the static site to the `gh-pages` branch automatically.
 
-If you are using **GitHub Actions** to deploy (recommended for security):
-- The workflow should create the `.env` file from GitHub Secrets before deploying.
+### 3. Ensure Pages is pointed at the deployment branch
+Set GitHub Pages to deploy from the `gh-pages` branch root.
 
 ## Security Notes
 - **Never commit your `.env` file** to a public repository. It is included in `.gitignore` by default.

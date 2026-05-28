@@ -1,7 +1,6 @@
 /**
  * Simplified Configuration Loader
- * Directly fetches and parses the .env file at runtime.
- * No build step or setup scripts required.
+ * Uses a generated config.js when deployed and falls back to .env for local development.
  */
 
 async function loadConfig() {
@@ -12,7 +11,19 @@ async function loadConfig() {
     };
 
     try {
-        const response = await fetch('.env');
+        const module = await import('./config.js');
+        if (module.CONFIG) {
+            return {
+                ...config,
+                ...module.CONFIG
+            };
+        }
+    } catch (e) {
+        // Ignore missing config.js and fall back to .env
+    }
+
+    try {
+        const response = await fetch('.env', { cache: 'no-store' });
         if (response.ok) {
             const text = await response.text();
             text.split('\n').forEach(line => {

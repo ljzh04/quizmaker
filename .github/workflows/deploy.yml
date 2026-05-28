@@ -6,8 +6,7 @@ on:
       - main
 
 permissions:
-  contents: read
-  pages: write
+  contents: write
 
 jobs:
   deploy:
@@ -16,15 +15,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Generate config.js from GitHub Secrets
+      - name: Generate config.js from GitHub settings
+        env:
+          GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          cat > config.js << 'EOF'
-          export const CONFIG = {
-              GEMINI_KEY: "${{ secrets.GEMINI_KEY }}",
-              SUPABASE_URL: "${{ secrets.SUPABASE_URL }}",
-              SUPABASE_ANON_KEY: "${{ secrets.SUPABASE_ANON_KEY }}"
+          node - <<'NODE'
+          const fs = require('fs');
+
+          const config = {
+            GEMINI_KEY: process.env.GEMINI_KEY || '',
+            SUPABASE_URL: process.env.SUPABASE_URL || '',
+            SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || ''
           };
-          EOF
+
+          fs.writeFileSync(
+            'config.js',
+            `export const CONFIG = ${JSON.stringify(config, null, 2)};\n`
+          );
+          NODE
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
